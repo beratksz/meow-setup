@@ -7,7 +7,6 @@ echo "🚧 Dosyalar oluşturuluyor..."
 cat > meow-setup.sh <<'EOF'
 #!/bin/bash
 # [--- Script buraya gelecek ---]
-#!/bin/bash
 
 # ========== MEOW SETUP SCRIPT ==========
 echo "\n🐾 MEOW VPS OTOMATIK KURULUM BAŞLIYOR..."
