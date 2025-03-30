@@ -114,15 +114,22 @@ docker run -d \
   mcr.microsoft.com/mssql/server:2022-latest
 
 # === SQLCMD Kurulumu ===
-echo "\n🛠️ SQL komut aracı (sqlcmd) kuruluyor..."
-curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list)"
+echo -e "\n🛠️ SQL komut aracı (sqlcmd) kuruluyor..."
+
+# Microsoft GPG anahtarı ekleniyor (güncel yöntem)
+curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
+
+# Microsoft repo'su ekleniyor
+curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+
+# Paket listesi güncelleniyor ve araçlar kuruluyor
 sudo apt update
-sudo apt install -y mssql-tools unixodbc-dev
+sudo ACCEPT_EULA=Y apt install -y mssql-tools unixodbc-dev
 
 # PATH'e ekle
 echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.zshrc
-source ~/.zshrc
+echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+source ~/.zshrc || true
 
 # === Domain Testi ===
 echo "\n🔎 Domain yönlendirmesi kontrol ediliyor: $test_domain"
