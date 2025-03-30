@@ -6,6 +6,7 @@ set -e
 ### 🧾 KULLANICIDAN GEREKLİ BİLGİLERİ AL ###
 echo "🔐 SQL Server şifresini girin (örnek: M30w1903Database):"
 read -rsp "> " SQL_PASSWORD
+echo
 
 echo "☁️ Google Drive için rclone remote adı girin (örnek: GoogleDrive):"
 read -rp "> " REMOTE_NAME
@@ -39,6 +40,13 @@ mkdir -p "$BACKUP_DIR" "$LOG_DIR"
 echo "📦 Nginx stack yedekleniyor..."
 tar -czf "$BACKUP_DIR/nginx-stack-$TIMESTAMP.tar.gz" "$HOME/meow-stack"
 
+### 🐳 Docker container'ları ve image'ları yedekle ###
+echo "🐳 Docker image ve container ayarları yedekleniyor..."
+docker image save -o "$BACKUP_DIR/docker-images-$TIMESTAMP.tar" $(docker images --format '{{.Repository}}:{{.Tag}}')
+docker ps -a --format '{{.Names}}' | while read container; do
+  docker inspect "$container" > "$BACKUP_DIR/${container}_inspect_$TIMESTAMP.json"
+done
+
 ### 🧠 SQL SERVER - TÜM DB'LERİ YEDEKLE ###
 echo "🧠 SQL Server'daki tüm veritabanları yedekleniyor..."
 docker exec "$SQL_CONTAINER_NAME" /opt/mssql-tools/bin/sqlcmd \
@@ -58,7 +66,16 @@ rclone copy "$BACKUP_DIR" "$REMOTE_NAME:$REMOTE_DIR" --log-file "$LOG_DIR/upload
 echo "🧹 7 günden eski yedekler siliniyor..."
 find "$BACKUP_DIR" -type f -mtime +7 -exec rm -f {} \;
 
+### ⏰ CRON JOB EKLE (günde 1 kere 03:00'te) ###
+if ! crontab -l | grep -q "meow-backup.sh"; then
+  (crontab -l 2>/dev/null; echo "0 3 * * * bash $HOME/meow-setup/meow-backup.sh >> $LOG_DIR/cron-$(date +\%F).log 2>&1") | crontab -
+  echo "🕒 Cron job eklendi: Her gün saat 03:00'te yedek alınacak."
+else
+  echo "ℹ️ Cron job zaten mevcut."
+fi
+
 ### ✅ TAMAMLANDI ###
+echo ""
 echo "✅ Yedekleme tamamlandı: $TIMESTAMP"
 echo "📂 Yedek dizini: $BACKUP_DIR"
 echo "📄 Log dosyası: $LOG_DIR/upload-$TIMESTAMP.log"
