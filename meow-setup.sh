@@ -6,7 +6,6 @@ echo "🚧 Dosyalar oluşturuluyor..."
 # Kurulum scriptini oluştur
 cat > meow-setup.sh <<'EOF'
 #!/bin/bash
-# [--- Script buraya gelecek ---]
 
 # ========== MEOW SETUP SCRIPT ==========
 echo "\n🐾 MEOW VPS OTOMATIK KURULUM BAŞLIYOR..."
@@ -37,7 +36,7 @@ read
 
 # === Sistem Güncelleme & Gerekli Paketler ===
 echo "\n📦 Gerekli paketler kuruluyor..."
-sudo apt update && sudo apt install -y docker.io docker-compose ufw curl git zsh dnsutils
+sudo apt update && sudo apt install -y docker.io docker-compose ufw curl git zsh dnsutils apt-transport-https ca-certificates gnupg software-properties-common
 sudo usermod -aG docker "$USER"
 
 # === Firewall Ayarları ===
@@ -60,7 +59,7 @@ docker network create "$network_name"
 echo "\n🌐 Nginx Reverse Proxy kuruluyor..."
 mkdir -p ~/meow-stack && cd ~/meow-stack || exit
 
-cat > docker-compose.yml <<EOF
+cat > docker-compose.yml <<EOF2
 version: '3.8'
 
 services:
@@ -99,7 +98,7 @@ services:
 networks:
   $network_name:
     external: true
-EOF
+EOF2
 
 docker-compose up -d
 
@@ -113,6 +112,17 @@ docker run -d \
   -v sql_data:/var/opt/mssql \
   --network $network_name \
   mcr.microsoft.com/mssql/server:2022-latest
+
+# === SQLCMD Kurulumu ===
+echo "\n🛠️ SQL komut aracı (sqlcmd) kuruluyor..."
+curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list)"
+sudo apt update
+sudo apt install -y mssql-tools unixodbc-dev
+
+# PATH'e ekle
+echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.zshrc
+source ~/.zshrc
 
 # === Domain Testi ===
 echo "\n🔎 Domain yönlendirmesi kontrol ediliyor: $test_domain"
@@ -161,6 +171,7 @@ Bu script ile Ubuntu VPS sunucunuzu tek komutla aşağıdaki şekilde kurabilirs
 - UFW ile port açma (80, 443, 1433, SSH)
 - Nginx + Let's Encrypt reverse proxy
 - SQL Server (Docker ile)
+- SQLCMD Aracı
 - ZSH + Oh My Zsh kurulumu
 - Domain yönlendirme ve SSL testi
 
