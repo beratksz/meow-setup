@@ -64,11 +64,6 @@ sudo ufw allow 443/tcp
 sudo ufw allow "$ssh_port"/tcp
 sudo ufw --force enable
 
-# === Oh My Zsh Kurulumu ===
-echo -e "\n💅 ZSH ve Oh My Zsh kuruluyor..."
-chsh -s "$(which zsh)"
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-
 # === Docker Network Oluşturulması ===
 echo -e "\n🔌 Docker ağı oluşturuluyor: $network_name"
 if ! docker network inspect "$network_name" >/dev/null 2>&1; then
