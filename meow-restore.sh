@@ -1,7 +1,7 @@
 #!/bin/bash
 # 🐾 MEOW RESTORE FROM BACKUP SCRIPT (Tam Otomatik)
 
-set -e
+set -euo pipefail
 
 echo "🧠 SQL Server SA şifresini girin (örnek: M30w1903Database):"
 read -rsp "> " SQL_PASSWORD && echo
@@ -32,9 +32,12 @@ fi
 echo "🧠 SQL veritabanları geri yükleniyor..."
 if [ -d "$SQL_DIR" ]; then
     for bak in "$SQL_DIR"/*.bak; do
+        # DB adını dosya adının ilk kısmından alıyoruz (ilk '-' karakterine kadar)
         DBNAME=$(basename "$bak" | cut -d'-' -f1)
+        # Container içerisindeki yedek dosyası yolu:
+        FILE_IN_CONTAINER="/var/opt/mssql/backup/$(basename "$bak")"
         echo "🔁 $DBNAME geri yükleniyor..."
-        sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "RESTORE DATABASE [$DBNAME] FROM DISK = N'$bak' WITH REPLACE"
+        sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE"
     done
     echo "✅ Tüm veritabanları geri yüklendi."
 else
@@ -45,6 +48,7 @@ fi
 # === Docker Compose ile stack'i yeniden başlat ===
 echo "🐳 Docker container'ları yeniden başlatılıyor..."
 cd "$HOME/meow-stack"
+# Eğer docker-compose yüklüyse bu komut, Docker Compose Plugin kullanıyorsanız "docker compose up -d" olabilir.
 docker-compose up -d
 
 # === Tamamlandı ===
@@ -52,4 +56,3 @@ echo "✅ Geri yükleme işlemi tamamlandı."
 echo "📂 Stack dizini: $HOME/meow-stack"
 echo "🗃️ Yedek klasörü: $BACKUP_DIR"
 echo "📄 Log dosyası: $LOG_FILE"
-
