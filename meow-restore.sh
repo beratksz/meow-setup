@@ -62,7 +62,7 @@ for bak in "$SQL_DIR"/*.bak; do
     DBNAME=$(basename "$bak" | cut -d'-' -f1)
     FILE_IN_CONTAINER="$FILE_BASE/$(basename "$bak")"
     echo "🔁 $DBNAME geri yükleniyor..."
-    sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE" || {
+    sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "ALTER DATABASE [$DBNAME] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE; ALTER DATABASE [$DBNAME] SET MULTI_USER;" || {
         echo "⚠️ $DBNAME geri yüklenirken hata oluştu!"
         exit 1
     }
