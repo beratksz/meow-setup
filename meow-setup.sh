@@ -141,6 +141,9 @@ docker run -d \
   -v "$HOME/meow-backup/sql":/var/opt/mssql/backup \
   --network ${network_name} \
   mcr.microsoft.com/mssql/server:2022-latest
+  
+echo "SQL Server'ın tamamen başlatılması için 30 saniye bekleniyor..."
+sleep 30
 
 # === SQLCMD Kurulumu ===
 echo -e "\n🛠️ SQL komut aracı (sqlcmd) kuruluyor..."
