@@ -58,17 +58,15 @@ if ! command -v sqlcmd &>/dev/null; then
 fi
 
 for bak in "$SQL_DIR"/*.bak; do
-    # Veritabanı adını dosya adının ilk '-' karakterine kadar alıyoruz
     DBNAME=$(basename "$bak" | cut -d'-' -f1)
     FILE_IN_CONTAINER="$FILE_BASE/$(basename "$bak")"
-    echo "🔁 $DBNAME geri yükleniyor..."
+    echo "🔁 $DBNAME geri yükleniyor (dosya: $(basename "$bak"))..."
     
     tmp_sql="/tmp/restore_${DBNAME}.sql"
     cat > "$tmp_sql" <<EOF
 ALTER DATABASE [$DBNAME] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE;
 ALTER DATABASE [$DBNAME] SET MULTI_USER;
-GO
 EOF
 
     sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -i "$tmp_sql" || {
@@ -77,9 +75,11 @@ EOF
         exit 1
     }
     rm -f "$tmp_sql"
+    echo "✅ $DBNAME geri yüklemesi tamamlandı."
 done
 
 echo "✅ Tüm veritabanları geri yüklendi."
+
 
 # --- Docker Compose ile Stack'in Yeniden Başlatılması ---
 echo "🐳 Docker container'ları yeniden başlatılıyor..."
