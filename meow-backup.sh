@@ -34,7 +34,7 @@ fi
 echo "🧠 SQL Server veritabanları yedekleniyor..."
 mkdir -p "$BACKUP_DIR/sql"
 
-DATABASES=$(eval $SQLCMD -Q "SET NOCOUNT ON; SELECT name FROM sys.databases WHERE database_id > 4;" -h -1 | tr -d '\r')
+DATABASES=$(sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "SET NOCOUNT ON; SELECT name FROM sys.databases WHERE database_id > 4;" -h -1 | tr -d '\r')
 
 for db in $DATABASES; do
     BAKFILE="$BACKUP_DIR/sql/$db-$TIMESTAMP.bak"
