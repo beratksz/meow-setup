@@ -25,7 +25,12 @@ sql_exec() {
     /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "$1"
 }
 
+# Gerekli dizinleri oluştur
 mkdir -p "$BACKUP_DIR" "$LOG_DIR" "$HOST_SQL_BACKUP_DIR"
+
+# İzinleri otomatikleştir: Host'taki SQL backup dizinini container'ın yazabileceği hale getiriyoruz.
+sudo chown -R 10001:0 "$HOST_SQL_BACKUP_DIR"
+sudo chmod -R 770 "$HOST_SQL_BACKUP_DIR"
 
 # === LOG DOSYASINI HAZIRLA ===
 LOG_FILE="$LOG_DIR/backup-$TIMESTAMP.log"
@@ -50,7 +55,7 @@ for db in $DATABASES; do
     # Host üzerinde oluşturulacak yedek dosyasının adını belirle
     BAKFILE="$HOST_SQL_BACKUP_DIR/${db}-${TIMESTAMP}.bak"
     echo "📀 $db yedekleniyor..."
-    # SQL Server container içindeki mount noktası üzerinden yedekleme yapacak:
+    # SQL Server, container içindeki mount noktası üzerinden yedekleme yapacak:
     sql_exec "BACKUP DATABASE [$db] TO DISK = N'$CONTAINER_SQL_BACKUP_DIR/$(basename "$BAKFILE")' WITH INIT"
 done
 
