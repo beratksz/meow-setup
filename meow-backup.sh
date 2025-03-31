@@ -20,7 +20,7 @@ if ! command -v rclone &> /dev/null; then
     curl https://rclone.org/install.sh | sudo bash
 fi
 
-if [ ! -f "$HOME/.config/rclone/rclone.conf" ]; then
+if ! [ -s "$HOME/.config/rclone/rclone.conf" ]; then
     echo "⚙️  rclone yapılandırması başlatılıyor..."
     rclone config
 else
@@ -33,18 +33,19 @@ LOG_DIR="$BACKUP_DIR/logs"
 TIMESTAMP=$(date +%F-%H%M)
 SQL_CONTAINER_NAME="sqlserver"
 SQL_BACKUP_DIR="/var/opt/mssql/backups"
+SQLCMD_PATH="/opt/mssql-tools/bin/sqlcmd"
 
 mkdir -p "$BACKUP_DIR" "$LOG_DIR"
 
 # === Nginx Stack Yedekleme ===
 echo "📦 Nginx stack arşivleniyor..."
-tar -czf "$BACKUP_DIR/nginx-stack-$TIMESTAMP.tar.gz" "$HOME/nginx-stack" 2>/dev/null || echo "⚠️ Bazı dosyalar okunamadı (izin hatası olabilir)."
+tar -czf "$BACKUP_DIR/nginx-stack-$TIMESTAMP.tar.gz" "$HOME/meow-stack" 2>/dev/null || echo "⚠️ Bazı dosyalar okunamadı (izin hatası olabilir)."
 
 # === SQL Yedekleme ===
 echo "🧠 SQL Server veritabanları yedekleniyor..."
-if docker exec "$SQL_CONTAINER_NAME" test -f /opt/mssql-tools/bin/sqlcmd; then
+if docker exec "$SQL_CONTAINER_NAME" test -f $SQLCMD_PATH; then
     docker exec "$SQL_CONTAINER_NAME" mkdir -p "$SQL_BACKUP_DIR"
-    docker exec "$SQL_CONTAINER_NAME" /opt/mssql-tools/bin/sqlcmd \
+    docker exec "$SQL_CONTAINER_NAME" $SQLCMD_PATH \
         -S localhost -U sa -P "$SQL_PASSWORD" \
         -Q "EXEC sp_MSforeachdb 'IF DB_ID(''?') > 4 BEGIN BACKUP DATABASE [?] TO DISK = ''$SQL_BACKUP_DIR/?.bak'' END'"
 else
@@ -55,6 +56,7 @@ fi
 echo "📁 Yedeklenen .bak dosyaları dışa aktarılıyor..."
 for bakfile in $(docker exec "$SQL_CONTAINER_NAME" sh -c "ls $SQL_BACKUP_DIR 2>/dev/null | grep .bak" || true); do
     docker cp "$SQL_CONTAINER_NAME:$SQL_BACKUP_DIR/$bakfile" "$BACKUP_DIR/$bakfile-$TIMESTAMP" || true
+    mv "$BACKUP_DIR/$bakfile-$TIMESTAMP" "$BACKUP_DIR/sql-$bakfile-$TIMESTAMP" 2>/dev/null || true
 done
 
 # === Google Drive'a Gönder ===
@@ -71,3 +73,6 @@ echo "📂 Lokalde: $BACKUP_DIR"
 echo "📄 Log: $LOG_DIR/upload-$TIMESTAMP.log"
 echo "☁️ Remote: $REMOTE_NAME:$REMOTE_DIR"
 
+# === Cron Hatırlatması ===
+echo -e "\n🕒 Bu işlemi her gün saat 03:00'te çalıştırmak için crontab'a ekleyebilirsiniz:"
+echo "0 3 * * * /bin/bash $HOME/meow-backup.sh >> $HOME/meow-backup/cron.log 2>&1"
