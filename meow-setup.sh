@@ -1,5 +1,8 @@
 #!/bin/bash
 # ========== MEOW VPS OTOMATIK KURULUM SCRIPTİ ==========
+
+set -euo pipefail
+
 echo -e "\n🐾 MEOW VPS OTOMATIK KURULUM BAŞLIYOR..."
 
 # === Kullanıcıdan Bilgileri Al ===
@@ -120,8 +123,19 @@ EOF
 
 docker compose up -d
 
+# === rclone Kurulumu (otomatik) ===
+echo -e "\n☁️  rclone kurulumu kontrol ediliyor..."
+if ! command -v rclone &>/dev/null; then
+    echo "rclone bulunamadı, kuruluyor..."
+    curl https://rclone.org/install.sh | sudo bash
+else
+    echo "✅ rclone zaten yüklü."
+fi
+
 # === SQL Server Kurulumu ===
 echo -e "\n🧠 SQL Server Docker konteyneri kuruluyor..."
+# SQL Server için ek olarak host üzerindeki yedek dizinini konteynere mount ediyoruz.
+mkdir -p "$HOME/meow-backup/sql"
 docker volume inspect sql_data >/dev/null 2>&1 || docker volume create sql_data
 docker run -d \
   --name sqlserver \
@@ -129,6 +143,7 @@ docker run -d \
   -e "SA_PASSWORD=${db_password}" \
   -p 1433:1433 \
   -v sql_data:/var/opt/mssql \
+  -v "$HOME/meow-backup/sql":/var/opt/mssql/backup \
   --network ${network_name} \
   mcr.microsoft.com/mssql/server:2022-latest
 
