@@ -3,13 +3,19 @@
 
 set -euo pipefail
 
-# === KULLANICI BİLGİLERİNİ AL ===
-echo "🔐 SQL Server SA şifresi (örnek: M30w1903Database):"
-read -rsp "> " SQL_PASSWORD && echo
-echo "☁️  Google Drive için rclone remote adınızı girin (örnek: GoogleDrive):"
-read -rp "> " REMOTE_NAME
-echo "📂 Google Drive'da yedeklerin depolanacağı klasör adını girin (örnek: Meow_Backups):"
-read -rp "> " REMOTE_DIR
+# Config dosyasını kontrol et ve yükle
+CONFIG_FILE="$HOME/meow-setup/config.env"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+else
+    echo "Config dosyası bulunamadı! Lütfen $CONFIG_FILE dosyasını oluşturun."
+    exit 1
+fi
+
+# Config dosyasındaki bilgiler
+echo "SQL Server SA şifresi: ********"
+echo "rclone remote adı: $REMOTE_NAME"
+echo "Google Drive yedek klasörü: $REMOTE_DIR"
 
 # Varsayılan dizinler
 BACKUP_DIR="$HOME/meow-backup"
