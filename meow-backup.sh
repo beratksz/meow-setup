@@ -28,8 +28,10 @@ sql_exec() {
 # Gerekli dizinleri oluştur
 mkdir -p "$BACKUP_DIR" "$LOG_DIR" "$HOST_SQL_BACKUP_DIR"
 
-# İzinleri otomatikleştir: Host'taki SQL backup dizinini container'ın yazabileceği hale getiriyoruz.
-sudo chown -R 10001:0 "$HOST_SQL_BACKUP_DIR"
+# İzinleri otomatikleştir:
+# Container genellikle UID 10001 ile çalışıyor; 
+# hem container'ın yazabilmesi hem de temizleme komutlarının erişebilmesi için:
+sudo chown -R 10001:$(id -g) "$HOST_SQL_BACKUP_DIR"
 sudo chmod -R 770 "$HOST_SQL_BACKUP_DIR"
 
 # === LOG DOSYASINI HAZIRLA ===
@@ -48,6 +50,9 @@ fi
 
 # === SQL Yedekleme ===
 echo "🧠 SQL Server veritabanları yedekleniyor..."
+
+# Container içindeki backup dizininin varlığını kontrol edip oluşturuyoruz:
+docker exec sqlserver mkdir -p "$CONTAINER_SQL_BACKUP_DIR" || true
 
 DATABASES=$(/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "SET NOCOUNT ON; SELECT name FROM sys.databases WHERE database_id > 4;" -h -1 | tr -d '\r')
 
@@ -71,7 +76,7 @@ rclone copy "$BACKUP_DIR" "$REMOTE_NAME:$REMOTE_DIR" --log-file "$LOG_DIR/upload
 
 # === LOKAL TEMİZLİK (7 GÜN) ===
 echo "🧹 7 günden eski yedekler temizleniyor..."
-find "$BACKUP_DIR" -type f -mtime +7 -exec rm -f {} \;
+sudo find "$BACKUP_DIR" -type f -mtime +7 -exec rm -f {} \;
 
 # === TAMAMLANDI ===
 echo "✅ Yedekleme tamamlandı!"
