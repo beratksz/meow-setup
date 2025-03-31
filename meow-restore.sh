@@ -67,6 +67,7 @@ for bak in "$SQL_DIR"/*.bak; do
 ALTER DATABASE [$DBNAME] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE;
 ALTER DATABASE [$DBNAME] SET MULTI_USER;
+exit
 EOF
 
     sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -i "$tmp_sql" || {
@@ -79,7 +80,6 @@ EOF
 done
 
 echo "✅ Tüm veritabanları geri yüklendi."
-
 
 # --- Docker Compose ile Stack'in Yeniden Başlatılması ---
 echo "🐳 Docker container'ları yeniden başlatılıyor..."
