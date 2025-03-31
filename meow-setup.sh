@@ -111,6 +111,7 @@ services:
       - ./html:/usr/share/nginx/html
     environment:
       DEFAULT_EMAIL: ${default_email}
+      NGINX_PROXY_CONTAINER: "nginx-proxy"
 
 networks:
   ${network_name}:
@@ -184,4 +185,4 @@ echo "   - HTTP: 80/tcp"
 echo "   - HTTPS: 443/tcp"
 echo "   - MSSQL: 1433/tcp"
 echo "   - SSH: ${ssh_port}/tcp"
-echo -e "\n🚀 Şimdi projeni deploy etmeye hazırsın! Unutma, doğru yapılandırılmış bir sistem tıpkı kedi gibi her zaman kendinden emin ve hazır olur!"
+echo -e "\n🚀 Şimdi projeni deploy etmeye hazırsın! Unutma, doğru yapılandırma sistemini pürüzsüz çalıştırır; tıpkı iyi yapılandırılmış bir kod gibi!"
