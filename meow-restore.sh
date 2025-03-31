@@ -86,9 +86,9 @@ echo "🐳 Docker container'ları yeniden başlatılıyor..."
 cd "$HOME/meow-stack" || { echo "❌ meow-stack dizinine erişilemiyor!"; exit 1; }
 # Kullanılan compose sürümüne göre aşağıdakilerden birini kullanın:
 if command -v docker-compose &>/dev/null; then
-    docker-compose up -d
-else
     docker compose up -d
+else
+    docker-compose up -d
 fi
 
 # --- İşlem Tamamlandı ---
