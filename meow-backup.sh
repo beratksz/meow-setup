@@ -1,78 +1,58 @@
 #!/bin/bash
-# 🐾 MEOW BACKUP TO GOOGLE DRIVE SCRIPT (Tam Otomatik)
+# 🐾 MEOW BACKUP TO GOOGLE DRIVE - V2
 
 set -e
 
-# === Bilgi Toplama ===
-echo "🔐 SQL Server şifresini girin (örnek: M30w1903Database):"
-read -rsp "> " SQL_PASSWORD
-echo
+# === KULLANICI BİLGİLERİNİ AL ===
+echo "🔐 SQL Server SA şifresi (örnek: M30w1903Database):"
+read -rsp "> " SQL_PASSWORD && echo
 
-echo "☁️  Google Drive için rclone remote adı girin (örnek: GoogleDrive):"
-read -rp "> " REMOTE_NAME
-
-echo "📂 Google Drive klasör adı (örnek: Meow_Backups):"
-read -rp "> " REMOTE_DIR
-
-# === rclone Kontrolü ===
-echo "📦 rclone kurulumu kontrol ediliyor..."
-if ! command -v rclone &> /dev/null; then
-    curl https://rclone.org/install.sh | sudo bash
-fi
-
-if ! [ -s "$HOME/.config/rclone/rclone.conf" ]; then
-    echo "⚙️  rclone yapılandırması başlatılıyor..."
-    rclone config
-else
-    echo "✅ rclone zaten yapılandırılmış."
-fi
-
-# === Dizinler ===
+REMOTE_NAME="GoogleDrive"
+REMOTE_DIR="Meow_Backups"
 BACKUP_DIR="$HOME/meow-backup"
 LOG_DIR="$BACKUP_DIR/logs"
+STACK_DIR="$HOME/meow-stack"
 TIMESTAMP=$(date +%F-%H%M)
-SQL_CONTAINER_NAME="sqlserver"
-SQL_BACKUP_DIR="/var/opt/mssql/backups"
-SQLCMD_PATH="/opt/mssql-tools/bin/sqlcmd"
-
+SQLCMD="sqlcmd -S localhost -U sa -P \"$SQL_PASSWORD\""
 mkdir -p "$BACKUP_DIR" "$LOG_DIR"
 
-# === Nginx Stack Yedekleme ===
-echo "📦 Nginx stack arşivleniyor..."
-tar -czf "$BACKUP_DIR/nginx-stack-$TIMESTAMP.tar.gz" "$HOME/meow-stack" 2>/dev/null || echo "⚠️ Bazı dosyalar okunamadı (izin hatası olabilir)."
+# === LOG DOSYASINI HAZIRLA ===
+LOG_FILE="$LOG_DIR/backup-$TIMESTAMP.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "📦 Yedekleme işlemi başlıyor... [$TIMESTAMP]"
+
+# === NGINX STACK ARŞİVİ ===
+echo "🗄️  Nginx stack arşivleniyor..."
+if [ -d "$STACK_DIR" ]; then
+    sudo tar -czf "$BACKUP_DIR/nginx-stack-$TIMESTAMP.tar.gz" "$STACK_DIR" || echo "⚠️  Arşivlenirken bazı dosyalar atlandı."
+else
+    echo "❌ $STACK_DIR klasörü bulunamadı!"
+fi
 
 # === SQL Yedekleme ===
 echo "🧠 SQL Server veritabanları yedekleniyor..."
-if docker exec "$SQL_CONTAINER_NAME" test -f $SQLCMD_PATH; then
-    docker exec "$SQL_CONTAINER_NAME" mkdir -p "$SQL_BACKUP_DIR"
-    docker exec "$SQL_CONTAINER_NAME" $SQLCMD_PATH \
-        -S localhost -U sa -P "$SQL_PASSWORD" \
-        -Q "EXEC sp_MSforeachdb 'IF DB_ID(''?') > 4 BEGIN BACKUP DATABASE [?] TO DISK = ''$SQL_BACKUP_DIR/?.bak'' END'"
-else
-    echo "⚠️ SQL yedeği alınırken hata oluştu! sqlcmd aracı yok veya yol hatalı."
-fi
+mkdir -p "$BACKUP_DIR/sql"
 
-# === .bak dosyalarını host'a çek ===
-echo "📁 Yedeklenen .bak dosyaları dışa aktarılıyor..."
-for bakfile in $(docker exec "$SQL_CONTAINER_NAME" sh -c "ls $SQL_BACKUP_DIR 2>/dev/null | grep .bak" || true); do
-    docker cp "$SQL_CONTAINER_NAME:$SQL_BACKUP_DIR/$bakfile" "$BACKUP_DIR/$bakfile-$TIMESTAMP" || true
-    mv "$BACKUP_DIR/$bakfile-$TIMESTAMP" "$BACKUP_DIR/sql-$bakfile-$TIMESTAMP" 2>/dev/null || true
+DATABASES=$(eval $SQLCMD -Q "SET NOCOUNT ON; SELECT name FROM sys.databases WHERE database_id > 4;" -h -1 | tr -d '\r')
+
+for db in $DATABASES; do
+    BAKFILE="$BACKUP_DIR/sql/$db-$TIMESTAMP.bak"
+    echo "📀 $db yedekleniyor..."
+    eval $SQLCMD -Q "BACKUP DATABASE [$db] TO DISK = N'$BAKFILE' WITH INIT"
 done
 
-# === Google Drive'a Gönder ===
+# === GOOGLE DRIVE'A YÜKLE ===
 echo "☁️ Google Drive'a yükleniyor..."
-rclone copy "$BACKUP_DIR" "$REMOTE_NAME:$REMOTE_DIR" --log-file "$LOG_DIR/upload-$TIMESTAMP.log" || echo "⚠️ Google Drive'a gönderim başarısız!"
+rclone copy "$BACKUP_DIR" "$REMOTE_NAME:$REMOTE_DIR" --log-file "$LOG_DIR/upload-$TIMESTAMP.log" --quiet || echo "⚠️ Yükleme sırasında hata oluştu!"
 
-# === Eski Yedekleri Sil (7 gün) ===
-echo "🧹 Eski yedekler temizleniyor (7 günden eski)..."
+# === LOKAL TEMİZLİK (7 GÜN) ===
+echo "🧹 7 günden eski yedekler temizleniyor..."
 find "$BACKUP_DIR" -type f -mtime +7 -exec rm -f {} \;
 
-# === Tamam ===
-echo "✅ Tüm yedekleme işlemleri başarıyla tamamlandı!"
-echo "📂 Lokalde: $BACKUP_DIR"
-echo "📄 Log: $LOG_DIR/upload-$TIMESTAMP.log"
+# === TAMAMLANDI ===
+echo "✅ Yedekleme tamamlandı!"
+echo "📁 Yedek klasörü: $BACKUP_DIR"
+echo "📄 Log dosyası: $LOG_FILE"
 echo "☁️ Remote: $REMOTE_NAME:$REMOTE_DIR"
 
-# === Cron Hatırlatması ===
-echo -e "\n🕒 Bu işlemi her gün saat 03:00'te çalıştırmak için crontab'a ekleyebilirsiniz:"
-echo "0 3 * * * /bin/bash $HOME/meow-backup.sh >> $HOME/meow-backup/cron.log 2>&1"
