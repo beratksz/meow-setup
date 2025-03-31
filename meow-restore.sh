@@ -62,11 +62,23 @@ for bak in "$SQL_DIR"/*.bak; do
     DBNAME=$(basename "$bak" | cut -d'-' -f1)
     FILE_IN_CONTAINER="$FILE_BASE/$(basename "$bak")"
     echo "🔁 $DBNAME geri yükleniyor..."
-    sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "ALTER DATABASE [$DBNAME] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE; ALTER DATABASE [$DBNAME] SET MULTI_USER;" || {
+    
+    tmp_sql="/tmp/restore_${DBNAME}.sql"
+    cat > "$tmp_sql" <<EOF
+ALTER DATABASE [$DBNAME] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE;
+ALTER DATABASE [$DBNAME] SET MULTI_USER;
+GO
+EOF
+
+    sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -i "$tmp_sql" || {
         echo "⚠️ $DBNAME geri yüklenirken hata oluştu!"
+        rm -f "$tmp_sql"
         exit 1
     }
+    rm -f "$tmp_sql"
 done
+
 echo "✅ Tüm veritabanları geri yüklendi."
 
 # --- Docker Compose ile Stack'in Yeniden Başlatılması ---
