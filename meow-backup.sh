@@ -11,7 +11,7 @@ REMOTE_NAME="GoogleDrive"
 REMOTE_DIR="Meow_Backups"
 BACKUP_DIR="$HOME/meow-backup"
 LOG_DIR="$BACKUP_DIR/logs"
-STACK_DIR="$HOME/nginx-stack"
+STACK_DIR="$HOME/meow-stack"
 TIMESTAMP=$(date +%F-%H%M)
 SQLCMD="sqlcmd -S localhost -U sa -P \"$SQL_PASSWORD\""
 mkdir -p "$BACKUP_DIR" "$LOG_DIR"
