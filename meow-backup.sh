@@ -1,7 +1,7 @@
 #!/bin/bash
 # 🐾 MEOW BACKUP TO GOOGLE DRIVE - V2
 
-set -e
+set -euo pipefail
 
 # === KULLANICI BİLGİLERİNİ AL ===
 echo "🔐 SQL Server SA şifresi (örnek: M30w1903Database):"
@@ -13,7 +13,12 @@ BACKUP_DIR="$HOME/meow-backup"
 LOG_DIR="$BACKUP_DIR/logs"
 STACK_DIR="$HOME/meow-stack"
 TIMESTAMP=$(date +%F-%H%M)
-SQLCMD="sqlcmd -S localhost -U sa -P \"$SQL_PASSWORD\""
+
+# SQL komutlarını çalıştırmak için fonksiyon tanımı
+sql_exec() {
+    /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "$1"
+}
+
 mkdir -p "$BACKUP_DIR" "$LOG_DIR"
 
 # === LOG DOSYASINI HAZIRLA ===
@@ -34,12 +39,12 @@ fi
 echo "🧠 SQL Server veritabanları yedekleniyor..."
 mkdir -p "$BACKUP_DIR/sql"
 
-DATABASES=$(sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "SET NOCOUNT ON; SELECT name FROM sys.databases WHERE database_id > 4;" -h -1 | tr -d '\r')
+DATABASES=$(/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -Q "SET NOCOUNT ON; SELECT name FROM sys.databases WHERE database_id > 4;" -h -1 | tr -d '\r')
 
 for db in $DATABASES; do
-    BAKFILE="$BACKUP_DIR/sql/$db-$TIMESTAMP.bak"
+    BAKFILE="$BACKUP_DIR/sql/${db}-${TIMESTAMP}.bak"
     echo "📀 $db yedekleniyor..."
-    eval $SQLCMD -Q "BACKUP DATABASE [$db] TO DISK = N'$BAKFILE' WITH INIT"
+    sql_exec "BACKUP DATABASE [$db] TO DISK = N'$BAKFILE' WITH INIT"
 done
 
 # === GOOGLE DRIVE'A YÜKLE ===
@@ -55,4 +60,3 @@ echo "✅ Yedekleme tamamlandı!"
 echo "📁 Yedek klasörü: $BACKUP_DIR"
 echo "📄 Log dosyası: $LOG_FILE"
 echo "☁️ Remote: $REMOTE_NAME:$REMOTE_DIR"
-
