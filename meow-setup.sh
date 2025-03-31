@@ -150,9 +150,8 @@ sudo apt-get update
 sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
 
 # PATH değişkenlerini güncelleyin
-echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.zshrc
 echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
-source ~/.zshrc || true
+source ~/.bashrc || true
 
 # === SQL Server Bağlantı Testi ===
 echo -e "\n🧪 SQL Server bağlantısı test ediliyor..."
