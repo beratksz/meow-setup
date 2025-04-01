@@ -37,7 +37,7 @@ mkdir -p "$BACKUP_DIR" "$LOG_DIR" "$HOST_SQL_BACKUP_DIR"
 
 # Host tarafındaki SQL backup dizininin izinlerini ayarla (container genelde UID 10001 ile çalışır)
 sudo chown -R 10001:10001 "$HOST_SQL_BACKUP_DIR"
-sudo chmod -R 755 "$HOST_SQL_BACKUP_DIR"
+sudo chmod -R 775 "$HOST_SQL_BACKUP_DIR"
 
 # LOG dosyasını oluştur
 LOG_FILE="$LOG_DIR/backup-$TIMESTAMP.log"
@@ -82,7 +82,7 @@ done
 # Backup işlemi tamamlandıktan sonra, dosya izinlerini güncelleyelim
 echo "ℹ️ Backup dosyalarının izinleri güncelleniyor..."
 sudo chown -R "$(whoami)":"$(id -g)" "$HOST_SQL_BACKUP_DIR"
-sudo chmod -R 755 "$HOST_SQL_BACKUP_DIR"
+sudo chmod -R 775 "$HOST_SQL_BACKUP_DIR"
 
 # === rclone Kontrolü ve Yükleme ===
 if ! command -v rclone &>/dev/null; then
