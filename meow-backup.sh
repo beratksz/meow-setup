@@ -36,9 +36,8 @@ sql_exec() {
 mkdir -p "$BACKUP_DIR" "$LOG_DIR" "$HOST_SQL_BACKUP_DIR"
 
 # Host tarafındaki SQL backup dizininin izinlerini ayarla (container genelde UID 10001 ile çalışır)
-sudo chown -R $(whoami):$(whoami) "$HOST_SQL_BACKUP_DIR"
-sudo chmod -R 755 "$HOST_SQL_BACKUP_DIR"
-
+sudo chown -R 10001:10001 "$HOST_SQL_BACKUP_DIR"
+sudo chmod -R 770 "$HOST_SQL_BACKUP_DIR"
 
 # LOG dosyasını oluştur
 LOG_FILE="$LOG_DIR/backup-$TIMESTAMP.log"
@@ -79,6 +78,11 @@ for db in $DATABASES; do
     # SQL Server, container içindeki mount noktası üzerinden yedekleme yapacak:
     sql_exec "BACKUP DATABASE [$db] TO DISK = N'$CONTAINER_SQL_BACKUP_DIR/$(basename "$BAKFILE")' WITH INIT"
 done
+
+# Backup işlemi tamamlandıktan sonra, dosya izinlerini güncelleyelim
+echo "ℹ️ Backup dosyalarının izinleri güncelleniyor..."
+sudo chown -R "$(whoami)":"$(id -g)" "$HOST_SQL_BACKUP_DIR"
+sudo chmod -R 755 "$HOST_SQL_BACKUP_DIR"
 
 # === rclone Kontrolü ve Yükleme ===
 if ! command -v rclone &>/dev/null; then
