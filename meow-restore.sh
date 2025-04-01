@@ -23,7 +23,7 @@ echo "📦 Geri yükleme işlemi başlıyor... [$TIMESTAMP]"
 # --- Meow-stack'i geri çıkar ---
 echo "📁 Arşiv çıkarılıyor: $STACK_ARCHIVE"
 if [ -f "$STACK_ARCHIVE" ]; then
-    sudo tar -xzf "$STACK_ARCHIVE" -C "$HOME"
+    sudo tar --strip-components=2 -xzf "$STACK_ARCHIVE" -C "$HOME"
     echo "✅ meow-stack klasörü geri yüklendi."
 else
     echo "❌ Arşiv dosyası bulunamadı!"
@@ -64,20 +64,35 @@ for bak in "$SQL_DIR"/*.bak; do
     
     tmp_sql="/tmp/restore_${DBNAME}.sql"
     cat > "$tmp_sql" <<EOF
-ALTER DATABASE [$DBNAME] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE;
-ALTER DATABASE [$DBNAME] SET MULTI_USER;
-exit
+USE master;
+GO
+IF EXISTS (SELECT 1 FROM sys.databases WHERE name = '$DBNAME')
+BEGIN
+    ALTER DATABASE [$DBNAME] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE [$DBNAME];
+END
+GO
+RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE, RECOVERY;
+GO
 EOF
 
-    sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -i "$tmp_sql" || {
-        echo "⚠️ $DBNAME geri yüklenirken hata oluştu!"
-        rm -f "$tmp_sql"
-        exit 1
-    }
+sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -i "$tmp_sql" &
+SQLCMD_PID=$!
+# Belirli bir süre bekle (örneğin 30 saniye)
+sleep 30
+
+# Eğer sqlcmd hala çalışıyorsa, zorla kapat
+if ps -p $SQLCMD_PID > /dev/null; then
+    echo "⚠️ SQLCMD işlem süresi aşıldı, zorla kapatılıyor..."
+    kill -9 $SQLCMD_PID
+    sleep 1  # PID'nin kapanması için kısa bekleme
+fi
+
     rm -f "$tmp_sql"
     echo "✅ $DBNAME geri yüklemesi tamamlandı."
 done
+
+
 
 echo "✅ Tüm veritabanları geri yüklendi."
 
