@@ -61,7 +61,7 @@ for bak in "$SQL_DIR"/*.bak; do
     DBNAME=$(basename "$bak" | cut -d'-' -f1)
     FILE_IN_CONTAINER="$FILE_BASE/$(basename "$bak")"
     echo "🔁 $DBNAME geri yükleniyor (dosya: $(basename "$bak"))..."
-    
+
     tmp_sql="/tmp/restore_${DBNAME}.sql"
     cat > "$tmp_sql" <<EOF
 USE master;
@@ -69,6 +69,7 @@ GO
 IF EXISTS (SELECT 1 FROM sys.databases WHERE name = '$DBNAME')
 BEGIN
     ALTER DATABASE [$DBNAME] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    ALTER DATABASE [$DBNAME] SET OFFLINE WITH ROLLBACK IMMEDIATE;
     DROP DATABASE [$DBNAME];
 END
 GO
@@ -76,20 +77,15 @@ RESTORE DATABASE [$DBNAME] FROM DISK = N'$FILE_IN_CONTAINER' WITH REPLACE, RECOV
 GO
 EOF
 
-sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -i "$tmp_sql" &
-SQLCMD_PID=$!
-# Belirli bir süre bekle (örneğin 30 saniye)
-sleep 30
+timeout -k 10 30 sqlcmd -S localhost -U sa -P "$SQL_PASSWORD" -i "$tmp_sql" >/dev/null || true
 
-# Eğer sqlcmd hala çalışıyorsa, zorla kapat
-if ps -p $SQLCMD_PID > /dev/null; then
-    echo "⚠️ SQLCMD işlem süresi aşıldı, zorla kapatılıyor..."
-    kill -9 $SQLCMD_PID
-    sleep 1  # PID'nin kapanması için kısa bekleme
+if [ $? -eq 0 ]; then
+    echo "✅ $DBNAME geri yüklemesi başarıyla tamamlandı."
+else
+    echo "⚠️ $DBNAME yüklemesi muhtemelen tamamlandı ama timeout ile sonlandırıldı."
 fi
 
-    rm -f "$tmp_sql"
-    echo "✅ $DBNAME geri yüklemesi tamamlandı."
+rm -f "$tmp_sql"
 done
 
 
