@@ -3,9 +3,9 @@
 # Bu script; 
 # 1) Docker network 'wp_network' var mı yok mu kontrol eder, yoksa oluşturur.
 # 2) Müşteri bilgilerini (musteri adı, port son eki, domain) interaktif olarak alır.
-# 3) Müşteri için WP ve DB container’larını tanımlayan docker-compose dosyasını oluşturur ve ayağa kaldırır.
+# 3) Müşteri için WP ve DB container’larını tanımlayan docker compose dosyasını oluşturur ve ayağa kaldırır.
 # 4) ./nginx_conf dizini altında müşteriye özel Nginx konfigürasyon dosyası oluşturur.
-# 5) Eğer Nginx reverse proxy container’ı çalışmıyorsa, onu docker-compose üzerinden başlatır;
+# 5) Eğer Nginx reverse proxy container’ı çalışmıyorsa, onu docker compose üzerinden başlatır;
 #    çalışıyorsa konfigürasyon değişikliğini uygulaması için container'ı yeniden yükletir.
 
 set -e
@@ -35,9 +35,9 @@ WP_DB_PASS="wp_pass_${CUSTOMER}"
 ROOT_PASS="root_pass_${CUSTOMER}"
 
 ########################################
-# 3. Docker-Compose Dosyasını Oluştur (WP & DB)
+# 3. docker compose Dosyasını Oluştur (WP & DB)
 ########################################
-COMPOSE_FILE="docker-compose-${CUSTOMER}.yml"
+COMPOSE_FILE="docker compose-${CUSTOMER}.yml"
 
 cat > ${COMPOSE_FILE} <<EOF
 version: '3.8'
@@ -85,7 +85,7 @@ EOF
 
 echo "Docker Compose dosyası '${COMPOSE_FILE}' oluşturuldu."
 echo "WordPress ve DB containerları başlatılıyor..."
-docker-compose -f ${COMPOSE_FILE} up -d
+docker compose -f ${COMPOSE_FILE} up -d
 
 ########################################
 # 4. Nginx Konfigürasyon Dosyası Oluştur
@@ -114,11 +114,11 @@ echo "Nginx konfigürasyon dosyası oluşturuldu: ${NGINX_CONF_FILE}"
 ########################################
 # 5. Nginx Reverse Proxy Container'ı
 ########################################
-# Nginx container'ı için docker-compose dosyası (ortak reverse proxy)
+# Nginx container'ı için docker compose dosyası (ortak reverse proxy)
 NGINX_COMPOSE_DIR="nginx_proxy"
-NGINX_COMPOSE_FILE="${NGINX_COMPOSE_DIR}/docker-compose.yml"
+NGINX_COMPOSE_FILE="${NGINX_COMPOSE_DIR}/docker compose.yml"
 
-# Eğer nginx_proxy dizini yoksa oluştur ve docker-compose dosyasını yaz.
+# Eğer nginx_proxy dizini yoksa oluştur ve docker compose dosyasını yaz.
 if [ ! -d "${NGINX_COMPOSE_DIR}" ]; then
   mkdir -p ${NGINX_COMPOSE_DIR}
   cat > ${NGINX_COMPOSE_FILE} <<'EOF'
@@ -139,13 +139,13 @@ networks:
   wp_network:
     external: true
 EOF
-  echo "Nginx reverse proxy docker-compose dosyası oluşturuldu: ${NGINX_COMPOSE_FILE}"
+  echo "Nginx reverse proxy docker compose dosyası oluşturuldu: ${NGINX_COMPOSE_FILE}"
 fi
 
 # Nginx proxy container'ı çalışıyor mu kontrol edelim.
 if ! docker ps --format '{{.Names}}' | grep -q "^reverse-proxy\$"; then
   echo "Nginx reverse proxy container'ı çalışmıyor, başlatılıyor..."
-  (cd ${NGINX_COMPOSE_DIR} && docker-compose up -d)
+  (cd ${NGINX_COMPOSE_DIR} && docker compose up -d)
 else
   echo "Nginx reverse proxy container'ı zaten çalışıyor. Konfigürasyon güncellendi, yeniden yükleniyor..."
   docker exec reverse-proxy nginx -s reload
