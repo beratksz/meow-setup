@@ -37,7 +37,7 @@ ROOT_PASS="root_pass_${CUSTOMER}"
 ########################################
 # 3. docker compose Dosyasını Oluştur (WP & DB)
 ########################################
-COMPOSE_FILE="docker compose-${CUSTOMER}.yml"
+COMPOSE_FILE="docker-compose-${CUSTOMER}.yml"
 
 cat > ${COMPOSE_FILE} <<EOF
 version: '3.8'
@@ -116,7 +116,7 @@ echo "Nginx konfigürasyon dosyası oluşturuldu: ${NGINX_CONF_FILE}"
 ########################################
 # Nginx container'ı için docker compose dosyası (ortak reverse proxy)
 NGINX_COMPOSE_DIR="nginx_proxy"
-NGINX_COMPOSE_FILE="${NGINX_COMPOSE_DIR}/docker compose.yml"
+NGINX_COMPOSE_FILE="${NGINX_COMPOSE_DIR}/docker-compose.yml"
 
 # Eğer nginx_proxy dizini yoksa oluştur ve docker compose dosyasını yaz.
 if [ ! -d "${NGINX_COMPOSE_DIR}" ]; then
