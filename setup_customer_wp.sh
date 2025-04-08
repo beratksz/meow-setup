@@ -1,22 +1,23 @@
 #!/bin/bash
-# setup_customer_wp.sh - Müşteri için izole WordPress ve DB ortamını kurar.
+# setup_customer_wp.sh - Müşteri için izole WordPress ve DB ortamını oluşturur ve network ayarlarını yapar.
 
 set -e
 
-# Gerekli bilgileri kullanıcıdan sırayla alalım.
+# Kullanıcıdan müşteri bilgilerini alalım.
 read -p "Müşteri adını girin (örneğin: musteri1): " CUSTOMER
 read -p "Port son ekini girin (örn: 01, 02, vs.): " PORT_SUFFIX
 read -p "Domain ismini girin (örn: musteri1.ornekdomain.com): " DOMAIN
 
-# Varsayılan değerler tanımlanıyor.
+# Varsayılan veritabanı bilgileri
 WP_DB_NAME="wp_db_${CUSTOMER}"
 WP_DB_USER="wp_user_${CUSTOMER}"
 WP_DB_PASS="wp_pass_${CUSTOMER}"
 ROOT_PASS="root_pass_${CUSTOMER}"
 
-# Docker Compose dosyasının ismini dinamik olarak belirleyelim:
+# Dinamik docker-compose dosyası ismini belirleyelim.
 COMPOSE_FILE="docker-compose-${CUSTOMER}.yml"
 
+# Docker Compose dosyasını network ayarlarıyla birlikte oluşturuyoruz.
 cat > ${COMPOSE_FILE} <<EOF
 version: '3.8'
 services:
@@ -35,6 +36,8 @@ services:
       - wordpress_data_${CUSTOMER}:/var/www/html
     depends_on:
       - db_${CUSTOMER}
+    networks:
+      - wp_network
 
   db_${CUSTOMER}:
     image: mysql:5.7
@@ -47,22 +50,28 @@ services:
       MYSQL_ROOT_PASSWORD: ${ROOT_PASS}
     volumes:
       - db_data_${CUSTOMER}:/var/lib/mysql
+    networks:
+      - wp_network
 
 volumes:
   wordpress_data_${CUSTOMER}:
   db_data_${CUSTOMER}:
+
+networks:
+  wp_network:
+    driver: bridge
 EOF
 
-echo "Docker Compose dosyası '${COMPOSE_FILE}' oluşturuldu."
+echo "Docker Compose dosyası '${COMPOSE_FILE}' network ayarlarıyla oluşturuldu."
 
-# Containerları başlatıyoruz.
+# Docker Compose container'larını başlatıyoruz.
 docker-compose -f ${COMPOSE_FILE} up -d
 
-if [ \$? -eq 0 ]; then
+if [ $? -eq 0 ]; then
   echo "Containerlar başarıyla başlatıldı."
   echo "Artık tarayıcınızdan 'http://${DOMAIN}' veya sunucunuzun public IP'si ve ilgili porta erişerek WordPress kurulumunu tamamlayabilirsiniz."
 else
   echo "Containerlar başlatılırken bir hata oluştu."
 fi
 
-echo "Kurulum tamamlandı. WordPress admin ayarlarını ilk erişimde kurulum sihirbazından yapabilirsiniz."
+echo "Kurulum tamamlandı. İlk erişimde WordPress kurulum sihirbazı açılacak, burada admin bilgilerini belirleyebilirsin."
