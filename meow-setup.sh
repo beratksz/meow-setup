@@ -41,7 +41,7 @@ echo -e "\n📦 Sistem güncelleniyor ve gerekli paketler kuruluyor..."
 sudo apt-get update
 
 # Docker'ın eski sürümleri kaldırılıyor
-sudo apt-get remove -y docker docker-engine docker.io containerd runc
+sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
 
 # Gerekli paketlerin kurulumu (bazıları zaten sisteminizde olabilir)
 sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release ufw git zsh dnsutils software-properties-common
