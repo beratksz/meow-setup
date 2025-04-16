@@ -127,38 +127,42 @@ else
     echo "✅ rclone zaten yüklü."
 fi
 
-# === SQL Server Kurulumu ===
-echo -e "\n🧠 SQL Server Docker konteyneri kuruluyor..."
-# SQL Server için ek olarak host üzerindeki yedek dizinini konteynere mount ediyoruz.
-mkdir -p "$HOME/meow-backup/sql"
-docker volume inspect sql_data >/dev/null 2>&1 || docker volume create sql_data
-docker run -d \
-  --name sqlserver \
-  -e 'ACCEPT_EULA=Y' \
-  -e "SA_PASSWORD=${db_password}" \
-  -p 1433:1433 \
-  -v sql_data:/var/opt/mssql \
-  -v "$HOME/meow-backup/sql":/var/opt/mssql/backup \
-  --network ${network_name} \
-  mcr.microsoft.com/mssql/server:2022-latest
-  
-echo "SQL Server'ın tamamen başlatılması için 30 saniye bekleniyor..."
-sleep 30
+# === SQL Server Kurulsun mu? ===
+read -rp $'\n🧠 SQL Server kurulacak mı? (yes/no): ' install_sqlserver
 
-# === SQLCMD Kurulumu ===
-echo -e "\n🛠️ SQL komut aracı (sqlcmd) kuruluyor..."
-curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
-curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
-sudo apt-get update
-sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+if [[ "$install_sqlserver" == "yes" ]]; then
+    echo -e "\n🧠 SQL Server Docker konteyneri kuruluyor..."
+    mkdir -p "$HOME/meow-backup/sql"
+    docker volume inspect sql_data >/dev/null 2>&1 || docker volume create sql_data
+    docker run -d \
+      --name sqlserver \
+      -e 'ACCEPT_EULA=Y' \
+      -e "SA_PASSWORD=${db_password}" \
+      -p 1433:1433 \
+      -v sql_data:/var/opt/mssql \
+      -v "$HOME/meow-backup/sql":/var/opt/mssql/backup \
+      --network ${network_name} \
+      mcr.microsoft.com/mssql/server:2022-latest
 
-# PATH değişkenlerini güncelleyin
-echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
-source ~/.bashrc || true
+    echo "SQL Server'ın tamamen başlatılması için 30 saniye bekleniyor..."
+    sleep 30
 
-# === SQL Server Bağlantı Testi ===
-echo -e "\n🧪 SQL Server bağlantısı test ediliyor..."
-/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P "${db_password}" -Q "SELECT @@VERSION;" || echo "⚠️  SQL Server bağlantı hatası!"
+    # SQLCMD Kurulumu
+    echo -e "\n🛠️ SQL komut aracı (sqlcmd) kuruluyor..."
+    curl -sSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
+    curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+    sudo apt-get update
+    sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
+
+    echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+    source ~/.bashrc || true
+
+    echo -e "\n🧪 SQL Server bağlantısı test ediliyor..."
+    /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P "${db_password}" -Q "SELECT @@VERSION;" || echo "⚠️  SQL Server bağlantı hatası!"
+else
+    echo "⏭️  SQL Server kurulumu atlandı."
+fi
+
 
 # === Domain Yönlendirme Testi ===
 echo -e "\n🔎 Domain yönlendirmesi kontrol ediliyor: ${test_domain}"
