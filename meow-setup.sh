@@ -155,7 +155,9 @@ if [[ "$install_sqlserver" == "yes" ]]; then
     sudo ACCEPT_EULA=Y apt-get install -y mssql-tools unixodbc-dev
 
     echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+    set +u
     source ~/.bashrc || true
+    set -u
 
     echo -e "\n🧪 SQL Server bağlantısı test ediliyor..."
     /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P "${db_password}" -Q "SELECT @@VERSION;" || echo "⚠️  SQL Server bağlantı hatası!"
